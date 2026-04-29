@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Калькулятор маржи — Зерно</title>
+<style>
+  :root {
+    --bg: #f7f6f2;
+    --surface: #ffffff;
+    --surface2: #f2f0ea;
+    --border: rgba(0,0,0,0.10);
+    --border-med: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --muted: #6b6b66;
+    --hint: #9e9e98;
+    --green: #2e7d32;
+    --red: #c62828;
+    --barley: #5a6e2a;
+    --lentil: #7b4f1a;
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Georgia', 'Times New Roman', serif; background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; }
+  .page { max-width: 480px; margin: 0 auto; padding: 0 0 3rem; }
+
+  .header { background: var(--text); color: #f7f6f2; padding: 1.5rem 1.25rem 1.25rem; }
+  .header h1 { font-size: 20px; font-weight: 400; letter-spacing: -0.02em; }
+  .header p { font-size: 11px; opacity: 0.5; margin-top: 4px; letter-spacing: 0.08em; text-transform: uppercase; font-family: system-ui, sans-serif; }
+
+  .section { background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 1.1rem 1.25rem; }
+  .section-title { font-family: system-ui, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .divider-section { height: 10px; background: var(--bg); border-top: 0.5px solid var(--border); border-bottom: 0.5px solid var(--border); }
+
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  .field-label { font-family: system-ui, sans-serif; font-size: 13px; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+  .field-label .val { font-weight: 600; color: var(--text); font-size: 14px; }
+  input[type=range] { width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: var(--border-med); border-radius: 2px; outline: none; cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--text); cursor: pointer; }
+  input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--text); cursor: pointer; border: none; }
+  .range-hints { display: flex; justify-content: space-between; font-family: system-ui, sans-serif; font-size: 10px; color: var(--hint); margin-top: 3px; }
+
+  .crop-bar { display: grid; grid-template-columns: 1fr 1fr; background: var(--surface2); border-bottom: 0.5px solid var(--border); }
+  .crop-btn { padding: 11px 0; font-family: system-ui, sans-serif; font-size: 13px; font-weight: 600; text-align: center; cursor: pointer; border: none; background: none; color: var(--muted); letter-spacing: 0.01em; border-bottom: 2px solid transparent; }
+  .crop-btn.active { background: var(--surface); color: var(--text); border-bottom-color: var(--text); }
+  .crop-panel { display: none; }
+  .crop-panel.visible { display: block; }
+
+  .alloc-bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; margin: 10px 0 6px; display: flex; }
+  .alloc-bar .b-fill { background: var(--barley); height: 100%; transition: width 0.15s; }
+  .alloc-bar .l-fill { background: var(--lentil); height: 100%; transition: width 0.15s; flex: 1; }
+  .alloc-legend { display: flex; gap: 14px; font-family: system-ui, sans-serif; font-size: 11px; color: var(--muted); }
+  .alloc-legend span { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+  .vol-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .vol-pill { background: var(--surface2); border-radius: var(--radius); padding: 10px 12px; }
+  .vol-pill .vp-label { font-family: system-ui, sans-serif; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+  .vol-pill .vp-val { font-size: 18px; font-weight: 400; margin-top: 2px; }
+  .vol-pill .vp-sub { font-family: system-ui, sans-serif; font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .vol-pill.barley .vp-val { color: var(--barley); }
+  .vol-pill.lentil .vp-val { color: var(--lentil); }
+
+  .dest-split { background: var(--surface2); border-radius: var(--radius); padding: 12px; margin-top: 10px; }
+  .dest-split .ds-title { font-family: system-ui, sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .dest-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; margin: 8px 0 5px; display: flex; }
+  .dest-bar .aktau-fill { background: #1565c0; height: 100%; transition: width 0.15s; }
+  .dest-bar .ca-fill { background: #6a1b9a; height: 100%; flex: 1; }
+  .dest-row { display: flex; justify-content: space-between; font-family: system-ui, sans-serif; font-size: 11px; color: var(--muted); }
+
+  .res-table { width: 100%; border-collapse: collapse; font-family: system-ui, sans-serif; font-size: 13px; }
+  .res-table tr { border-bottom: 0.5px solid var(--border); }
+  .res-table tr:last-child { border-bottom: none; }
+  .res-table td { padding: 7px 0; }
+  .res-table td:last-child { text-align: right; font-weight: 600; }
+  .res-table tr.total-row td { font-weight: 700; font-size: 14px; padding-top: 10px; border-top: 1px solid var(--border-med); border-bottom: none; }
+  .res-table tr.sub-row td { color: var(--muted); font-size: 12px; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .neutral { color: var(--text); }
+
+  .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .s-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .s-card .sc-label { font-family: system-ui, sans-serif; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; }
+  .s-card .sc-val { font-size: 20px; font-weight: 400; line-height: 1.1; }
+  .s-card .sc-sub { font-family: system-ui, sans-serif; font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .s-card.full { grid-column: 1 / -1; }
+  .s-card.barley-card { border-left: 3px solid var(--barley); }
+  .s-card.lentil-card { border-left: 3px solid var(--lentil); }
+  .s-card.total-card { border-left: 3px solid var(--text); background: var(--surface2); }
+
+  .dest-breakdown { margin-top: 12px; }
+  .db-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 0.5px solid var(--border); font-family: system-ui, sans-serif; font-size: 12px; }
+  .db-row:last-child { border-bottom: none; }
+  .db-label { color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .db-val { font-weight: 600; }
+  .badge { display: inline-block; font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+  .badge-aktau { background: #e3f2fd; color: #1565c0; }
+  .badge-ca { background: #f3e5f5; color: #6a1b9a; }
+
+  .footer { font-family: system-ui, sans-serif; font-size: 10px; color: var(--hint); text-align: center; padding: 1.5rem 1rem 0; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>Калькулятор маржи — Зерно</h1>
+    <p>Форвардные соглашения с поставщиками</p>
+  </div>
+
+  <!-- КАПИТАЛ -->
+  <div class="section">
+    <div class="section-title">Капитал и распределение</div>
+    <div class="field">
+      <div class="field-label">Свободный денежный поток (USD) <span class="val" id="fcf-display">$2,000,000</span></div>
+      <input type="range" id="fcf" min="100000" max="30000000" step="100000" value="2000000">
+      <div class="range-hints"><span>$100k</span><span>$30M</span></div>
+    </div>
+    <div class="field">
+      <div class="field-label">% FCF на форварды <span class="val" id="pct-display">60%</span></div>
+      <input type="range" id="pct" min="5" max="100" step="5" value="60">
+      <div class="range-hints"><span>5%</span><span>100%</span></div>
+    </div>
+    <div id="allocated-line" style="font-family:system-ui,sans-serif;font-size:12px;color:var(--muted);margin-top:4px;"></div>
+  </div>
+
+  <!-- РАСПРЕДЕЛЕНИЕ ПО КУЛЬТУРАМ -->
+  <div class="section">
+    <div class="section-title">Распределение по культурам</div>
+    <div class="field">
+      <div class="field-label">% на ячмень <span class="val" id="barley-pct-display">30%</span></div>
+      <input type="range" id="barley-pct" min="0" max="100" step="5" value="30">
+      <div class="range-hints"><span>0%</span><span>100%</span></div>
+    </div>
+    <div class="alloc-bar"><div class="b-fill" id="alloc-b-fill" style="width:30%"></div><div class="l-fill"></div></div>
+    <div class="alloc-legend">
+      <span><span class="dot" style="background:var(--barley)"></span><span id="alloc-b-leg">Ячмень 30%</span></span>
+      <span><span class="dot" style="background:var(--lentil)"></span><span id="alloc-l-leg">Чечевица 70%</span></span>
+    </div>
+    <div class="vol-row">
+      <div class="vol-pill barley">
+        <div class="vp-label">Капитал на ячмень</div>
+        <div class="vp-val" id="b-capital">$600,000</div>
+      </div>
+      <div class="vol-pill lentil">
+        <div class="vp-label">Капитал на чечевицу</div>
+        <div class="vp-val" id="l-capital">$1,400,000</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- КУРС ВАЛЮТЫ -->
+  <div class="section">
+    <div class="section-title">Курс валюты</div>
+    <div class="field">
+      <div class="field-label">Курс USD/KZT <span class="val" id="fx-display">510</span></div>
+      <input type="range" id="fx" min="470" max="550" step="5" value="510">
+      <div class="range-hints"><span>470</span><span>550</span></div>
+    </div>
+  </div>
+
+  <div class="divider-section"></div>
+
+  <!-- ВКЛАДКИ КУЛЬТУР -->
+  <div class="crop-bar">
+    <button class="crop-btn active" onclick="switchCrop('barley')">🌾 Ячмень</button>
+    <button class="crop-btn" onclick="switchCrop('lentils')">🫘 Чечевица</button>
+  </div>
+
+  <!-- ПАНЕЛЬ ЯЧМЕНЬ -->
+  <div id="barley-panel" class="crop-panel visible">
+    <div class="section">
+      <div class="section-title">Ячмень — Цена закупки</div>
+      <div class="field">
+        <div class="field-label">Цена закупки (тенге/тонна) <span class="val" id="b-buy-display">65,000 ₸</span></div>
+        <input type="range" id="b-buy" min="50000" max="80000" step="500" value="65000">
+        <div class="range-hints"><span>50,000 ₸</span><span>80,000 ₸</span></div>
+      </div>
+      <div class="vol-row">
+        <div class="vol-pill barley">
+          <div class="vp-label">Доступный объём</div>
+          <div class="vp-val" id="b-vol-total">—</div>
+          <div class="vp-sub">тонн</div>
+        </div>
+        <div class="vol-pill barley">
+          <div class="vp-label">Цена закупки (USD/т)</div>
+          <div class="vp-val" id="b-buy-usd">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Ячмень — Распределение по направлениям</div>
+      <div class="field">
+        <div class="field-label">Тонн на Актау <span class="val" id="b-aktau-display">5,000 т</span></div>
+        <input type="range" id="b-aktau-tons" min="0" max="50000" step="500" value="5000">
+        <div class="range-hints"><span>0 т</span><span id="b-aktau-max-hint">50k т</span></div>
+      </div>
+      <div class="dest-split">
+        <div class="ds-title">Разбивка по направлениям</div>
+        <div class="dest-bar"><div class="aktau-fill" id="b-dest-bar-aktau" style="width:50%"></div><div class="ca-fill"></div></div>
+        <div class="dest-row">
+          <span><span class="badge badge-aktau">Актау</span> <span id="b-aktau-vol-text">5,000 т</span></span>
+          <span><span class="badge badge-ca">Центр. Азия</span> <span id="b-ca-vol-text">— т</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Ячмень — Затраты (USD/тонна)</div>
+      <div class="field">
+        <div class="field-label">Погрузка <span class="val" id="b-load-display">$10.0</span></div>
+        <input type="range" id="b-load" min="8" max="12" step="0.5" value="10">
+        <div class="range-hints"><span>$8</span><span>$12</span></div>
+      </div>
+      <div class="field">
+        <div class="field-label">Логистика GTL — Актау <span class="val" id="b-log-aktau-display">$30</span></div>
+        <input type="range" id="b-log-aktau" min="20" max="40" step="1" value="30">
+        <div class="range-hints"><span>$20</span><span>$40</span></div>
+      </div>
+      <div class="field">
+        <div class="field-label">Логистика GTL — Центр. Азия <span class="val" id="b-log-ca-display">$25</span></div>
+        <input type="range" id="b-log-ca" min="20" max="40" step="1" value="25">
+        <div class="range-hints"><span>$20</span><span>$40</span></div>
+      </div>
+      <div class="field">
+        <div class="field-label">FOB Актау (только Актау) <span class="val" id="b-fob-display">$16.0</span></div>
+        <input type="range" id="b-fob" min="15" max="17" step="0.5" value="16">
+        <div class="range-hints"><span>$15</span><span>$17</span></div>
+      </div>
+      <div class="field">
+        <div class="field-label">Прочие расходы <span class="val" id="b-other-display">$4.0</span></div>
+        <input type="range" id="b-other" min="3" max="5" step="0.5" value="4">
+        <div class="range-hints"><span>$3</span><span>$5</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Ячмень — Цена продажи</div>
+      <div class="field">
+        <div class="field-label">Цена продажи (USD/тонна) <span class="val" id="b-sell-display">$230</span></div>
+        <input type="range" id="b-sell" min="200" max="260" step="1" value="230">
+        <div class="range-hints"><span>$200</span><span>$260</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Ячмень — Разбивка затрат</div>
+      <table class="res-table" id="barley-cost-table"></table>
+    </div>
+  </div>
+
+  <!-- ПАНЕЛЬ ЧЕЧЕВИЦА -->
+  <div id="lentils-panel" class="crop-panel">
+    <div class="section">
+      <div class="section-title">Чечевица — Цена закупки</div>
+      <div class="field">
+        <div class="field-label">Цена закупки (тенге/тонна) <span class="val" id="l-buy-display">130,000 ₸</span></div>
+        <input type="range" id="l-buy" min="110000" max="150000" step="1000" value="130000">
+        <div class="range-hints"><span>110,000 ₸</span><span>150,000 ₸</span></div>
+      </div>
+      <div class="vol-row">
+        <div class="vol-pill lentil">
+          <div class="vp-label">Доступный объём</div>
+          <div class="vp-val" id="l-vol-total">—</div>
+          <div class="vp-sub">тонн</div>
+        </div>
+        <div class="vol-pill lentil">
+          <div class="vp-label">Цена закупки (USD/т)</div>
+          <div class="vp-val" id="l-buy-usd">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Чечевица — Затраты (USD/тонна)</div>
+      <div class="field">
+        <div class="field-label">Погрузка <span class="val" id="l-load-display">$10.0</span></div>
+        <input type="range" id="l-load" min="8" max="12" step="0.5" value="10">
+        <div class="range-hints"><span>$8</span><span>$12</span></div>
+      </div>
+      <div class="field">
+        <div class="field-label">Логистика RAT → Новороссийск <span class="val" id="l-log-display">$35</span></div>
+        <input type="range" id="l-log" min="20" max="80" step="1" value="35">
+        <div class="range-hints"><span>$20</span><span>$80</span></div>
+      </div>
+      <div class="field">
+        <div class="field-label">FOB Новороссийск <span class="val" id="l-fob-display">$27.0</span></div>
+        <input type="range" id="l-fob" min="20" max="40" step="0.5" value="27">
+        <div class="range-hints"><span>$20</span><span>$40</span></div>
+      </div>
+      <div class="field">
+        <div class="field-label">Прочие расходы <span class="val" id="l-other-display">$4.0</span></div>
+        <input type="range" id="l-other" min="3" max="5" step="0.5" value="4">
+        <div class="range-hints"><span>$3</span><span>$5</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Чечевица — Цена продажи</div>
+      <div class="field">
+        <div class="field-label">Цена продажи (USD/тонна) <span class="val" id="l-sell-display">$500</span></div>
+        <input type="range" id="l-sell" min="400" max="600" step="5" value="500">
+        <div class="range-hints"><span>$400</span><span>$600</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Чечевица — Разбивка затрат</div>
+      <table class="res-table" id="lentils-cost-table"></table>
+    </div>
+  </div>
+
+  <div class="divider-section"></div>
+
+  <!-- СВОДКА -->
+  <div class="section">
+    <div class="section-title">Сводка по портфелю</div>
+    <div class="summary-grid" id="summary-cards"></div>
+    <div class="dest-breakdown" id="dest-breakdown"></div>
+  </div>
+
+  <div class="footer" id="footer-ts"></div>
+</div>
+
+<script>
+const S = {
+  fcf: 2000000, pct: 60, barleyPct: 30, fx: 510,
+  barley: { buy: 65000, load: 10, logAktau: 30, logCA: 25, fob: 16, other: 4, sell: 230, aktauTons: 5000 },
+  lentils: { buy: 130000, load: 10, log: 35, fob: 27, other: 4, sell: 500 }
+};
+
+function fmtUSD(n) { return '$' + Math.round(n).toLocaleString(); }
+function fmtKZT(n) { return Math.round(n).toLocaleString() + ' ₸'; }
+function fmtPct(n) { return (n >= 0 ? '+' : '') + n.toFixed(1) + '%'; }
+function fmtTons(n) { return Math.round(n).toLocaleString(); }
+function colorClass(n) { return n > 0 ? 'pos' : n < 0 ? 'neg' : 'neutral'; }
+
+function bindSlider(id, handler) {
+  document.getElementById(id).addEventListener('input', e => { handler(parseFloat(e.target.value)); recalc(); });
+}
+
+bindSlider('fcf', v => S.fcf = v);
+bindSlider('pct', v => S.pct = v);
+bindSlider('barley-pct', v => S.barleyPct = v);
+bindSlider('fx', v => S.fx = v);
+bindSlider('b-buy', v => S.barley.buy = v);
+bindSlider('b-load', v => S.barley.load = v);
+bindSlider('b-log-aktau', v => S.barley.logAktau = v);
+bindSlider('b-log-ca', v => S.barley.logCA = v);
+bindSlider('b-fob', v => S.barley.fob = v);
+bindSlider('b-other', v => S.barley.other = v);
+bindSlider('b-sell', v => S.barley.sell = v);
+bindSlider('b-aktau-tons', v => S.barley.aktauTons = v);
+bindSlider('l-buy', v => S.lentils.buy = v);
+bindSlider('l-load', v => S.lentils.load = v);
+bindSlider('l-log', v => S.lentils.log = v);
+bindSlider('l-fob', v => S.lentils.fob = v);
+bindSlider('l-other', v => S.lentils.other = v);
+bindSlider('l-sell', v => S.lentils.sell = v);
+
+function switchCrop(crop) {
+  document.querySelectorAll('.crop-btn').forEach((b, i) => b.classList.toggle('active', (i === 0 && crop === 'barley') || (i === 1 && crop === 'lentils')));
+  document.getElementById('barley-panel').classList.toggle('visible', crop === 'barley');
+  document.getElementById('lentils-panel').classList.toggle('visible', crop === 'lentils');
+}
+
+function tableRow(label, val, cls, sub) {
+  return `<tr${sub ? ' class="sub-row"' : ''}><td style="color:var(--muted)">${label}</td><td class="${cls||''}">${val}</td></tr>`;
+}
+function totalRow(label, val, cls) {
+  return `<tr class="total-row"><td>${label}</td><td class="${cls||''}">${val}</td></tr>`;
+}
+function sectionHeader(label) {
+  return `<tr><td colspan="2" style="padding-top:8px;font-size:10px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted)">${label}</td></tr>`;
+}
+
+function recalc() {
+  const allocated = S.fcf * S.pct / 100;
+  const bCapital = allocated * S.barleyPct / 100;
+  const lCapital = allocated * (100 - S.barleyPct) / 100;
+
+  document.getElementById('fcf-display').textContent = fmtUSD(S.fcf);
+  document.getElementById('pct-display').textContent = S.pct + '%';
+  document.getElementById('barley-pct-display').textContent = S.barleyPct + '%';
+  document.getElementById('fx-display').textContent = Math.round(S.fx);
+  document.getElementById('allocated-line').textContent = 'На форварды: ' + fmtUSD(allocated) + ' из ' + fmtUSD(S.fcf);
+  document.getElementById('alloc-b-fill').style.width = S.barleyPct + '%';
+  document.getElementById('alloc-b-leg').textContent = 'Ячмень ' + S.barleyPct + '%';
+  document.getElementById('alloc-l-leg').textContent = 'Чечевица ' + (100 - S.barleyPct) + '%';
+  document.getElementById('b-capital').textContent = fmtUSD(bCapital);
+  document.getElementById('l-capital').textContent = fmtUSD(lCapital);
+  document.getElementById('b-buy-display').textContent = fmtKZT(S.barley.buy);
+  document.getElementById('b-load-display').textContent = '$' + S.barley.load.toFixed(1);
+  document.getElementById('b-log-aktau-display').textContent = '$' + S.barley.logAktau;
+  document.getElementById('b-log-ca-display').textContent = '$' + S.barley.logCA;
+  document.getElementById('b-fob-display').textContent = '$' + S.barley.fob.toFixed(1);
+  document.getElementById('b-other-display').textContent = '$' + S.barley.other.toFixed(1);
+  document.getElementById('b-sell-display').textContent = '$' + S.barley.sell;
+  document.getElementById('l-buy-display').textContent = fmtKZT(S.lentils.buy);
+  document.getElementById('l-load-display').textContent = '$' + S.lentils.load.toFixed(1);
+  document.getElementById('l-log-display').textContent = '$' + S.lentils.log;
+  document.getElementById('l-fob-display').textContent = '$' + S.lentils.fob.toFixed(1);
+  document.getElementById('l-other-display').textContent = '$' + S.lentils.other.toFixed(1);
+  document.getElementById('l-sell-display').textContent = '$' + S.lentils.sell;
+
+  // ЯЧМЕНЬ
+  const bBuyUSD = S.barley.buy / S.fx;
+  const bTotalVol = bCapital > 0 && bBuyUSD > 0 ? Math.floor(bCapital / bBuyUSD) : 0;
+  const aktauTons = Math.min(S.barley.aktauTons, bTotalVol);
+  const caTons = Math.max(0, bTotalVol - aktauTons);
+
+  const aktauSlider = document.getElementById('b-aktau-tons');
+  aktauSlider.max = Math.max(bTotalVol, S.barley.aktauTons);
+  document.getElementById('b-aktau-max-hint').textContent = Math.round(Math.max(bTotalVol, 50000) / 1000) + 'k т';
+  document.getElementById('b-aktau-display').textContent = fmtTons(S.barley.aktauTons) + ' т';
+  document.getElementById('b-aktau-vol-text').textContent = fmtTons(aktauTons) + ' т';
+  document.getElementById('b-ca-vol-text').textContent = fmtTons(caTons) + ' т';
+
+  const destBarPct = bTotalVol > 0 ? (aktauTons / bTotalVol) * 100 : 0;
+  document.getElementById('b-dest-bar-aktau').style.width = destBarPct + '%';
+
+  // Separate cost structures per destination
+  const bCostAktau = bBuyUSD + S.barley.load + S.barley.logAktau + S.barley.fob + S.barley.other;
+  const bCostCA = bBuyUSD + S.barley.load + S.barley.logCA + S.barley.other;
+  const bMarginAktau = S.barley.sell - bCostAktau;
+  const bMarginCA = S.barley.sell - bCostCA;
+  const bMarginAktauPct = (bMarginAktau / S.barley.sell) * 100;
+  const bMarginCAPct = (bMarginCA / S.barley.sell) * 100;
+  const bProfitAktau = bMarginAktau * aktauTons;
+  const bProfitCA = bMarginCA * caTons;
+  const bProfitTotal = bProfitAktau + bProfitCA;
+
+  document.getElementById('b-vol-total').textContent = fmtTons(bTotalVol);
+  document.getElementById('b-buy-usd').textContent = '$' + bBuyUSD.toFixed(2);
+
+  let bTable = tableRow('Цена закупки (USD/т)', '$' + bBuyUSD.toFixed(2));
+  bTable += tableRow('Погрузка', '$' + S.barley.load.toFixed(1) + '/т');
+  bTable += tableRow('Прочие расходы', '$' + S.barley.other.toFixed(1) + '/т');
+  bTable += sectionHeader('Маршрут Актау');
+  bTable += tableRow('Логистика GTL', '$' + S.barley.logAktau + '/т', '', true);
+  bTable += tableRow('FOB Актау', '$' + S.barley.fob.toFixed(1) + '/т', '', true);
+  bTable += tableRow('Итого затраты/т', '$' + bCostAktau.toFixed(2), '', true);
+  bTable += tableRow('Маржа/т', '$' + bMarginAktau.toFixed(2) + ' (' + bMarginAktauPct.toFixed(1) + '%)', colorClass(bMarginAktau), true);
+  bTable += sectionHeader('Маршрут Центр. Азия');
+  bTable += tableRow('Логистика GTL', '$' + S.barley.logCA + '/т', '', true);
+  bTable += tableRow('Без FOB', '—', '', true);
+  bTable += tableRow('Итого затраты/т', '$' + bCostCA.toFixed(2), '', true);
+  bTable += tableRow('Маржа/т', '$' + bMarginCA.toFixed(2) + ' (' + bMarginCAPct.toFixed(1) + '%)', colorClass(bMarginCA), true);
+  document.getElementById('barley-cost-table').innerHTML = bTable;
+
+  // ЧЕЧЕВИЦА
+  const lBuyUSD = S.lentils.buy / S.fx;
+  const lTotalVol = lCapital > 0 && lBuyUSD > 0 ? Math.floor(lCapital / lBuyUSD) : 0;
+  const lCost = lBuyUSD + S.lentils.load + S.lentils.log + S.lentils.fob + S.lentils.other;
+  const lMargin = S.lentils.sell - lCost;
+  const lMarginPct = (lMargin / S.lentils.sell) * 100;
+  const lProfit = lMargin * lTotalVol;
+
+  document.getElementById('l-vol-total').textContent = fmtTons(lTotalVol);
+  document.getElementById('l-buy-usd').textContent = '$' + lBuyUSD.toFixed(2);
+
+  let lTable = tableRow('Цена закупки (USD/т)', '$' + lBuyUSD.toFixed(2));
+  lTable += tableRow('Погрузка', '$' + S.lentils.load.toFixed(1) + '/т');
+  lTable += tableRow('Логистика RAT', '$' + S.lentils.log + '/т');
+  lTable += tableRow('FOB Новороссийск', '$' + S.lentils.fob.toFixed(1) + '/т');
+  lTable += tableRow('Прочие расходы', '$' + S.lentils.other.toFixed(1) + '/т');
+  lTable += totalRow('Итого затраты/т', '$' + lCost.toFixed(2));
+  lTable += totalRow('Маржа/т', '$' + lMargin.toFixed(2) + ' (' + lMarginPct.toFixed(1) + '%)', colorClass(lMargin));
+  document.getElementById('lentils-cost-table').innerHTML = lTable;
+
+  // СВОДКА
+  const totalProfit = bProfitTotal + lProfit;
+  const bROC = bCapital > 0 ? (bProfitTotal / bCapital) * 100 : 0;
+  const lROC = lCapital > 0 ? (lProfit / lCapital) * 100 : 0;
+  const blendedROC = allocated > 0 ? (totalProfit / allocated) * 100 : 0;
+  const bAvgMarginPct = bTotalVol > 0 ? ((bProfitAktau + bProfitCA) / (S.barley.sell * bTotalVol)) * 100 : 0;
+
+  document.getElementById('summary-cards').innerHTML = `
+    <div class="s-card barley-card">
+      <div class="sc-label">Прибыль — Ячмень</div>
+      <div class="sc-val ${colorClass(bProfitTotal)}">${fmtUSD(bProfitTotal)}</div>
+      <div class="sc-sub">${fmtTons(bTotalVol)} т · ${fmtPct(bAvgMarginPct)} маржа</div>
+    </div>
+    <div class="s-card lentil-card">
+      <div class="sc-label">Прибыль — Чечевица</div>
+      <div class="sc-val ${colorClass(lProfit)}">${fmtUSD(lProfit)}</div>
+      <div class="sc-sub">${fmtTons(lTotalVol)} т · ${fmtPct(lMarginPct)} маржа</div>
+    </div>
+    <div class="s-card barley-card">
+      <div class="sc-label">ROC — Ячмень</div>
+      <div class="sc-val ${colorClass(bROC)}">${bROC.toFixed(1)}%</div>
+      <div class="sc-sub">на ${fmtUSD(bCapital)}</div>
+    </div>
+    <div class="s-card lentil-card">
+      <div class="sc-label">ROC — Чечевица</div>
+      <div class="sc-val ${colorClass(lROC)}">${lROC.toFixed(1)}%</div>
+      <div class="sc-sub">на ${fmtUSD(lCapital)}</div>
+    </div>
+    <div class="s-card total-card full">
+      <div class="sc-label">Итого прибыль по портфелю</div>
+      <div class="sc-val ${colorClass(totalProfit)}">${fmtUSD(totalProfit)}</div>
+      <div class="sc-sub">Blended ROC: ${fmtPct(blendedROC)} на ${fmtUSD(allocated)}</div>
+    </div>
+  `;
+
+  document.getElementById('dest-breakdown').innerHTML = `
+    <div style="font-family:system-ui,sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;margin-top:16px">Ячмень по направлениям</div>
+    <div class="db-row">
+      <span class="db-label"><span class="badge badge-aktau">Актау</span> Объём</span>
+      <span class="db-val">${fmtTons(aktauTons)} т</span>
+    </div>
+    <div class="db-row">
+      <span class="db-label"><span class="badge badge-aktau">Актау</span> Маржа/т</span>
+      <span class="db-val ${colorClass(bMarginAktau)}">$${bMarginAktau.toFixed(2)}</span>
+    </div>
+    <div class="db-row">
+      <span class="db-label"><span class="badge badge-aktau">Актау</span> Итого прибыль</span>
+      <span class="db-val ${colorClass(bProfitAktau)}">${fmtUSD(bProfitAktau)}</span>
+    </div>
+    <div class="db-row" style="margin-top:4px">
+      <span class="db-label"><span class="badge badge-ca">Центр. Азия</span> Объём</span>
+      <span class="db-val">${fmtTons(caTons)} т</span>
+    </div>
+    <div class="db-row">
+      <span class="db-label"><span class="badge badge-ca">Центр. Азия</span> Маржа/т</span>
+      <span class="db-val ${colorClass(bMarginCA)}">$${bMarginCA.toFixed(2)}</span>
+    </div>
+    <div class="db-row">
+      <span class="db-label"><span class="badge badge-ca">Центр. Азия</span> Итого прибыль</span>
+      <span class="db-val ${colorClass(bProfitCA)}">${fmtUSD(bProfitCA)}</span>
+    </div>
+    <div style="font-family:system-ui,sans-serif;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;margin-top:16px">Чечевица</div>
+    <div class="db-row">
+      <span class="db-label">Направление: Новороссийск</span>
+      <span class="db-val">${fmtTons(lTotalVol)} т</span>
+    </div>
+    <div class="db-row">
+      <span class="db-label">Маржа/т</span>
+      <span class="db-val ${colorClass(lMargin)}">$${lMargin.toFixed(2)}</span>
+    </div>
+    <div class="db-row">
+      <span class="db-label">Итого прибыль</span>
+      <span class="db-val ${colorClass(lProfit)}">${fmtUSD(lProfit)}</span>
+    </div>
+  `;
+
+  document.getElementById('footer-ts').textContent = new Date().toLocaleDateString('ru-RU', {day:'numeric', month:'long', year:'numeric'});
+}
+
+recalc();
+</script>
+</body>
+</html>
